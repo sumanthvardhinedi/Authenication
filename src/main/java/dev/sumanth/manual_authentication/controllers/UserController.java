@@ -4,6 +4,7 @@ import dev.sumanth.manual_authentication.Dto.TokenDto;
 import dev.sumanth.manual_authentication.Dto.UserDto;
 import dev.sumanth.manual_authentication.Dto.loginReq;
 import dev.sumanth.manual_authentication.Exception.PasswordMissmatch;
+import dev.sumanth.manual_authentication.Exception.TokenExpiredException;
 import dev.sumanth.manual_authentication.models.Token;
 import dev.sumanth.manual_authentication.models.User;
 import dev.sumanth.manual_authentication.service.UserServiceInf;
@@ -40,8 +41,9 @@ public class UserController {
     }
 
     @GetMapping("/validate/{token}")
-    public UserDto validateToken(@PathVariable String token) {
+    public UserDto validateToken(@PathVariable String token) throws TokenExpiredException {
       User user= userService.validateToken(token);
       return UserDto.from(user);
     }
+
 }

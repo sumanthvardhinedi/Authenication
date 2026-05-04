@@ -56,15 +56,15 @@ public class UserServiceImpl implements UserServiceInf {
     @Override
     public String login(String email, String password) throws PasswordMissmatch {
 
-        Optional<User> optionalUser= userRepo.findByEmail(email);
-        if(optionalUser.isEmpty()){
+        Optional<User> optionalUser = userRepo.findByEmail(email);
+        if (optionalUser.isEmpty()) {
             throw new RuntimeException("User not found");
         }
 
         User user = optionalUser.get();
-       if(!bCryptPasswordEncoder.matches(password,user.getPassword())){
-           throw new PasswordMissmatch("Invalid password");
-       }
+        if (!bCryptPasswordEncoder.matches(password, user.getPassword())) {
+            throw new PasswordMissmatch("Invalid password");
+        }
 
 //       ------------------- TOKEN GENERATION LOGIC with token return value in controller and serviceinf ------------------
 
@@ -98,11 +98,11 @@ public class UserServiceImpl implements UserServiceInf {
         calendar.add(Calendar.DAY_OF_MONTH, 30);
         Date expiryDate = calendar.getTime();
 
-        Map<String,Object> claims = new HashMap<>();
-       claims.put("user",user.getId());
-       claims.put("email",user.getEmail());
-       claims.put("roles", List.of("instructor","ta","student"));
-       claims.put("expiryDate",expiryDate);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("user", user.getId());
+        claims.put("email", user.getEmail());
+        claims.put("roles", List.of("instructor", "ta", "student"));
+        claims.put("expiryDate", expiryDate);
 
 //        SignatureAlgorithm algorithm = SignatureAlgorithm.HS256;
 //
@@ -120,26 +120,38 @@ public class UserServiceImpl implements UserServiceInf {
 
 
     }
-
     @Override
-    public User validateToken(String tokenValue) {
+    public User validateToken(String tokenValue) throws TokenExpiredException {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(tokenValue)
+                    .getPayload();
 
-        Claims claims = Jwts.parser()
-                .setSigningKey(secretKey)
-                .parseClaimsJws(tokenValue)
-                .getBody();
+            // ✅ Use standard expiration
+            Date expiration = claims.getExpiration();
+            if (expiration != null && expiration.before(new Date())) {
+                throw new TokenExpiredException("Token expired");
+            }
 
-//        Date expiryDate = claims.get("expiryDate", Date.class);
-//        Date curr = new Date();
-        long expirydate =(long) claims.get("expiryDate", Long.class);
-        long currtime=System.currentTimeMillis();
+            // ✅ Extract userId safely
+            Long userId = claims.get("user", Long.class);
+            if (userId == null) {
+                throw new RuntimeException("Invalid token: user missing");
+            }
 
-        if (expirydate > currtime) {
-            Long userId = ((Number) claims.get("user")).longValue();
-            Optional<User> optionalUser = userRepo.findById(userId);
-            return optionalUser.get();
+            return userRepo.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            throw new TokenExpiredException("Token expired");
+
+        } catch (io.jsonwebtoken.JwtException e) {
+            throw new RuntimeException("Invalid token");
+
+        } catch (Exception e) {
+            throw new RuntimeException("Something went wrong");
         }
-        return null;
     }
-
 }

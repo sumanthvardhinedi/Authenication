@@ -18,12 +18,6 @@ public class ApplicationConfig {
     public BCryptPasswordEncoder bCryptPasswordEncoder(){
         return new BCryptPasswordEncoder();
     }
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
-//        http.csrf(AbstractHttpConfigurer::disable);
-//        http.authorizeHttpRequests(authorise->authorise.anyRequest().permitAll());
-//    return http.build();
-//    }
     @Bean
     public SecretKey getsecretKey(){
         SignatureAlgorithm algorithm = SignatureAlgorithm.HS256;
